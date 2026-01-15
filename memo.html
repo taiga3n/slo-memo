@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0b0f" />
+  <title>スロ速メモ（店舗なし）</title>
+  <style>
+    :root{
+      --bg:#0b0b0f; --card:#151520; --ink:#f2f2f7; --muted:#a7a7b3;
+      --line:#2a2a36; --acc:#4da3ff; --bad:#ff5c5c; --btn:#1e1e2a;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; background:var(--bg); color:var(--ink);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"Hiragino Sans","Noto Sans JP",sans-serif;
+      padding: env(safe-area-inset-top) 12px env(safe-area-inset-bottom) 12px;
+    }
+    header{display:flex; align-items:center; justify-content:space-between; padding:10px 4px 12px;}
+    h1{font-size:18px; margin:0; letter-spacing:.5px}
+    .tabs{display:flex; gap:8px}
+    .tab{padding:8px 10px; border:1px solid var(--line); border-radius:12px; background:transparent; color:var(--ink); font-size:13px;}
+    .tab.active{background:var(--btn); border-color:transparent}
+    .card{
+      background:var(--card); border:1px solid var(--line);
+      border-radius:16px; padding:12px; margin-bottom:12px;
+      box-shadow: 0 6px 18px rgba(0,0,0,.25);
+    }
+    label{display:block; font-size:12px; color:var(--muted); margin:10px 0 6px}
+    input, textarea{
+      width:100%; padding:12px 12px; border-radius:14px; border:1px solid var(--line);
+      background:#0f0f16; color:var(--ink); font-size:16px; outline:none;
+    }
+    textarea{min-height:72px; resize:vertical}
+    .row{display:flex; gap:10px}
+    .row > *{flex:1}
+    .btnrow{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
+    button{
+      border:1px solid var(--line); background:var(--btn); color:var(--ink);
+      padding:12px 12px; border-radius:14px; font-size:15px; touch-action:manipulation;
+    }
+    button.primary{background:var(--acc); border-color:transparent; color:#001427; font-weight:700}
+    button.danger{background:transparent; border-color:var(--bad); color:var(--bad)}
+    button.ghost{background:transparent}
+    .mini{padding:10px 10px; border-radius:12px; font-size:14px;}
+    .hint{color:var(--muted); font-size:12px; line-height:1.5; margin-top:8px}
+    .items{margin-top:10px; display:flex; flex-direction:column; gap:10px}
+    .item{border:1px solid var(--line); border-radius:14px; padding:10px; background:#0f0f16;}
+    .itemTop{display:flex; justify-content:space-between; gap:10px; align-items:flex-start}
+    .itemMain{font-size:15px; font-weight:650}
+    .itemSub{font-size:12px; color:var(--muted); margin-top:4px; line-height:1.4; white-space:pre-wrap}
+    .itemBtns{display:flex; gap:8px}
+    .itemBtns button{padding:8px 10px; font-size:13px; border-radius:12px}
+    .toast{
+      position:fixed; left:50%; transform:translateX(-50%);
+      bottom: calc(env(safe-area-inset-bottom) + 16px);
+      background:#0f0f16; border:1px solid var(--line); color:var(--ink);
+      padding:10px 14px; border-radius:999px; font-size:13px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      opacity:0; pointer-events:none; transition:opacity .18s ease;
+    }
+    .toast.show{opacity:1}
+    .pill{
+      display:inline-flex; align-items:center; gap:6px;
+      border:1px solid var(--line); border-radius:999px; padding:8px 10px; background:transparent;
+      font-size:13px; color:var(--ink)
+    }
+    .pill select{padding:6px 8px; font-size:13px; border-radius:10px}
+    .kpi{display:flex; gap:10px; flex-wrap:wrap; margin-top:8px}
+    .kpi > div{border:1px solid var(--line); border-radius:14px; padding:10px 12px; background:transparent; font-size:13px; color:var(--muted)}
+    .kpi b{color:var(--ink); font-size:16px; margin-left:6px}
+    .footerBtns{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
+    .small{font-size:12px; color:var(--muted)}
+  </style>
+</head>
+<body>
+<header>
+  <h1>スロ速メモ</h1>
+  <div class="tabs">
+    <button id="tabAdd" class="tab active" type="button">追加</button>
+    <button id="tabList" class="tab" type="button">履歴</button>
+  </div>
+</header>
+
+<section id="viewAdd" class="card">
+  <div class="row">
+    <div>
+      <label>日付</label>
+      <div class="btnrow">
+        <button class="mini" id="btnToday" type="button">今日</button>
+        <button class="mini" id="btnYesterday" type="button">昨日</button>
+      </div>
+      <input id="date" type="date" />
+    </div>
+    <div>
+      <label>台番</label>
+      <div class="btnrow">
+        <button class="mini" id="btnDaiMinus" type="button">-1</button>
+        <button class="mini" id="btnDaiPlus" type="button">+1</button>
+        <button class="mini ghost" id="btnDaiClear" type="button">クリア</button>
+      </div>
+      <input id="dai" inputmode="numeric" pattern="[0-9]*" placeholder="例：1141" />
+    </div>
+  </div>
+
+  <div class="row">
+    <div>
+      <label>当該ゲーム数（G）</label>
+      <input id="games" inputmode="numeric" pattern="[0-9]*" placeholder="例：15178" />
+    </div>
+    <div>
+      <label>スルー回数</label>
+      <div class="btnrow">
+        <button class="mini" id="btnSuruMinus" type="button">-1</button>
+        <button class="mini" id="btnSuruPlus" type="button">+1</button>
+        <button class="mini ghost" id="btnSuruClear" type="button">0にする</button>
+      </div>
+      <input id="suru" inputmode="numeric" pattern="[0-9]*" placeholder="例：3" />
+    </div>
+  </div>
+
+  <div>
+    <label>メモ（示唆・気づき）</label>
+    <textarea id="memo" placeholder="例：有利切れっぽい／葉っぱ点滅／客層…"></textarea>
+  </div>
+
+  <div class="btnrow">
+    <button class="primary" id="btnSave" type="button">保存（最速）</button>
+    <button class="ghost" id="btnSaveNext" type="button">保存して次（台番+1）</button>
+    <button class="danger" id="btnAllClearForm" type="button">入力をリセット</button>
+  </div>
+
+  <div class="hint">
+    コツ：<b>昨日</b>→<b>台番</b>→<b>G</b>→<b>スルー</b>→<b>保存</b> で数秒。
+  </div>
+</section>
+
+<section id="viewList" class="card" style="display:none">
+  <div class="pill">
+    表示：
+    <select id="filterRange">
+      <option value="all">全て</option>
+      <option value="today">今日</option>
+      <option value="yesterday">昨日</option>
+      <option value="7">直近7日</option>
+      <option value="30">直近30日</option>
+    </select>
+  </div>
+
+  <div class="kpi" id="kpis"></div>
+
+  <div class="footerBtns">
+    <button id="btnExport" type="button">CSV書き出し</button>
+    <button class="danger" id="btnDeleteAll" type="button">全削除</button>
+  </div>
+  <div class="small">※CSVはこの端末内で作成します（共有でメモやファイルへ保存できます）</div>
+
+  <div class="items" id="items"></div>
+</section>
+
+<div id="toast" class="toast"></div>
+
+<script>
+(() => {
+  const LS_KEY = "slo_memo_nostore_v1";
+  const $ = (id) => document.getElementById(id);
+
+  const tabAdd = $("tabAdd");
+  const tabList = $("tabList");
+  const viewAdd = $("viewAdd");
+  const viewList = $("viewList");
+
+  const dateEl = $("date");
+  const daiEl = $("dai");
+  const gamesEl = $("games");
+  const suruEl = $("suru");
+  const memoEl = $("memo");
+
+  const filterRange = $("filterRange");
+  const itemsEl = $("items");
+  const kpisEl = $("kpis");
+
+  const toastEl = $("toast");
+  let toastTimer = null;
+
+  const todayISO = () => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0,10);
+  };
+  const addDaysISO = (baseISO, deltaDays) => {
+    const d = new Date(baseISO + "T00:00:00");
+    d.setDate(d.getDate() + deltaDays);
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0,10);
+  };
+
+  const showToast = (msg) => {
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1200);
+  };
+
+  const load = () => {
+    try { return JSON.parse(localStorage.getItem(LS_KEY) || "[]"); }
+    catch { return []; }
+  };
+  const saveAll = (arr) => localStorage.setItem(LS_KEY, JSON.stringify(arr));
+
+  const normInt = (v) => {
+    const s = String(v ?? "").trim().replace(/[, ]/g,"");
+    if (s === "") return null;
+    const n = Number(s);
+    return Number.isFinite(n) ? Math.trunc(n) : null;
+  };
+
+  const fmt = (n) => (n == null ? "" : n.toLocaleString("ja-JP"));
+
+  const openTab = (which) => {
+    const isAdd = which === "add";
+    tabAdd.classList.toggle("active", isAdd);
+    tabList.classList.toggle("active", !isAdd);
+    viewAdd.style.display = isAdd ? "" : "none";
+    viewList.style.display = isAdd ? "none" : "";
+    if (!isAdd) renderList();
+  };
+
+  tabAdd.addEventListener("click", () => openTab("add"));
+  tabList.addEventListener("click", () => openTab("list"));
+
+  $("btnToday").addEventListener("click", () => dateEl.value = todayISO());
+  $("btnYesterday").addEventListener("click", () => dateEl.value = addDaysISO(todayISO(), -1));
+
+  $("btnDaiMinus").addEventListener("click", () => {
+    const n = normInt(daiEl.value);
+    if (n == null) return;
+    daiEl.value = String(n - 1);
+  });
+  $("btnDaiPlus").addEventListener("click", () => {
+    const n = normInt(daiEl.value);
+    if (n == null) return;
+    daiEl.value = String(n + 1);
+  });
+  $("btnDaiClear").addEventListener("click", () => daiEl.value = "");
+
+  $("btnSuruMinus").addEventListener("click", () => {
+    const n = normInt(suruEl.value) ?? 0;
+    suruEl.value = String(Math.max(0, n - 1));
+  });
+  $("btnSuruPlus").addEventListener("click", () => {
+    const n = normInt(suruEl.value) ?? 0;
+    suruEl.value = String(n + 1);
+  });
+  $("btnSuruClear").addEventListener("click", () => suruEl.value = "0");
+
+  const clearForm = () => {
+    gamesEl.value = "";
+    suruEl.value = "";
+    memoEl.value = "";
+  };
+
+  $("btnAllClearForm").addEventListener("click", () => {
+    dateEl.value = addDaysISO(todayISO(), -1);
+    gamesEl.value = "";
+    suruEl.value = "";
+    memoEl.value = "";
+    showToast("入力をリセット");
+  });
+
+  const makeRecord = () => ({
+    id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + "_" + Math.random().toString(16).slice(2),
+    date: dateEl.value || todayISO(),
+    dai: normInt(daiEl.value),
+    games: normInt(gamesEl.value),
+    suru: normInt(suruEl.value) ?? 0,
+    memo: memoEl.value.trim(),
+    createdAt: new Date().toISOString()
+  });
+
+  const validate = (r) => {
+    if (r.dai == null) return "台番が空です";
+    if (r.games == null) return "ゲーム数（G）が空です";
+    return null;
+  };
+
+  const doSave = (mode) => {
+    const r = makeRecord();
+    const err = validate(r);
+    if (err) { showToast(err); return; }
+    const data = load();
+    data.unshift(r);
+    saveAll(data);
+    showToast("保存しました");
+    clearForm();
+
+    if (mode === "next" && r.dai != null) {
+      daiEl.value = String(r.dai + 1);
+      gamesEl.focus();
+    } else {
+      daiEl.focus();
+      daiEl.select?.();
+    }
+  };
+
+  $("btnSave").addEventListener("click", () => doSave("normal"));
+  $("btnSaveNext").addEventListener("click", () => doSave("next"));
+
+  const inRange = (recDateISO, range) => {
+    const base = todayISO();
+    if (range === "all") return true;
+    if (range === "today") return recDateISO === base;
+    if (range === "yesterday") return recDateISO === addDaysISO(base, -1);
+    const days = Number(range);
+    if (!Number.isFinite(days)) return true;
+    const from = addDaysISO(base, -(days - 1));
+    return recDateISO >= from && recDateISO <= base;
+  };
+
+  const applyFilters = (data) => data.filter(r => inRange(r.date, filterRange.value));
+
+  const renderKPIs = (rows) => {
+    const cnt = rows.length;
+    const gSum = rows.reduce((a,r)=>a+(r.games??0),0);
+    const avgSuru = cnt ? rows.reduce((a,r)=>a+(r.suru??0),0)/cnt : 0;
+    kpisEl.innerHTML = "";
+    const mk = (label, val) => {
+      const d = document.createElement("div");
+      d.innerHTML = `${label}<b>${val}</b>`;
+      return d;
+    };
+    kpisEl.appendChild(mk("件数", fmt(cnt)));
+    kpisEl.appendChild(mk("G合計", fmt(gSum)));
+    kpisEl.appendChild(mk("平均スルー", (Math.round(avgSuru*10)/10).toString()));
+  };
+
+  const deleteRecord = (id) => {
+    saveAll(load().filter(r => r.id !== id));
+    showToast("削除しました");
+    renderList();
+  };
+
+  const editRecord = (id) => {
+    const data = load();
+    const r = data.find(x => x.id === id);
+    if (!r) return;
+
+    dateEl.value = r.date || todayISO();
+    daiEl.value = r.dai == null ? "" : String(r.dai);
+    gamesEl.value = r.games == null ? "" : String(r.games);
+    suruEl.value = String(r.suru ?? 0);
+    memoEl.value = r.memo || "";
+
+    const btnSave = $("btnSave");
+    const btnSaveNext = $("btnSaveNext");
+    btnSave.textContent = "更新して保存";
+    btnSaveNext.style.display = "none";
+
+    btnSave.onclick = () => {
+      const updated = makeRecord();
+      updated.id = id;
+      updated.createdAt = r.createdAt;
+
+      const err = validate(updated);
+      if (err) { showToast(err); return; }
+
+      saveAll(load().map(x => x.id === id ? updated : x));
+      showToast("更新しました");
+
+      btnSave.textContent = "保存（最速）";
+      btnSaveNext.style.display = "";
+      btnSave.onclick = null;
+
+      clearForm();
+      openTab("list");
+    };
+
+    openTab("add");
+    gamesEl.focus();
+  };
+
+  const renderList = () => {
+    const rows = applyFilters(load());
+    renderKPIs(rows);
+    itemsEl.innerHTML = "";
+
+    if (!rows.length) {
+      const empty = document.createElement("div");
+      empty.className = "hint";
+      empty.textContent = "該当データがありません。";
+      itemsEl.appendChild(empty);
+      return;
+    }
+
+    rows.forEach(r => {
+      const item = document.createElement("div");
+      item.className = "item";
+
+      const top = document.createElement("div");
+      top.className = "itemTop";
+
+      const left = document.createElement("div");
+      const main = document.createElement("div");
+      main.className = "itemMain";
+      main.textContent = `${r.date}  台${r.dai ?? ""}  ${fmt(r.games)}G  スルー${r.suru ?? 0}`;
+
+      const sub = document.createElement("div");
+      sub.className = "itemSub";
+      sub.textContent = r.memo ? r.memo : "";
+
+      left.appendChild(main);
+      if (r.memo) left.appendChild(sub);
+
+      const btns = document.createElement("div");
+      btns.className = "itemBtns";
+
+      const bEdit = document.createElement("button");
+      bEdit.type = "button";
+      bEdit.textContent = "編集";
+      bEdit.addEventListener("click", () => editRecord(r.id));
+
+      const bDel = document.createElement("button");
+      bDel.type = "button";
+      bDel.textContent = "削除";
+      bDel.className = "danger";
+      bDel.addEventListener("click", () => deleteRecord(r.id));
+
+      btns.appendChild(bEdit);
+      btns.appendChild(bDel);
+
+      top.appendChild(left);
+      top.appendChild(btns);
+
+      item.appendChild(top);
+      itemsEl.appendChild(item);
+    });
+  };
+
+  // CSV export
+  const csvEscape = (s) => {
+    const v = (s ?? "").toString();
+    if (/[",\n]/.test(v)) return `"${v.replace(/"/g,'""')}"`;
+    return v;
+  };
+
+  $("btnExport").addEventListener("click", async () => {
+    const data = applyFilters(load());
+    const header = ["date","dai","games","suru","memo"];
+    const lines = [header.join(",")].concat(
+      data.map(r => [
+        r.date,
+        r.dai ?? "",
+        r.games ?? "",
+        r.suru ?? 0,
+        (r.memo ?? "").replace(/\r\n/g,"\n")
+      ].map(csvEscape).join(","))
+    );
+    const csv = lines.join("\n");
+    const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+    const fileName = `slo_memo_${todayISO()}.csv`;
+
+    if (navigator.share && navigator.canShare) {
+      const file = new File([blob], fileName, {type:"text/csv"});
+      if (navigator.canShare({files:[file]})) {
+        try { await navigator.share({ files:[file], title:"スロ速メモCSV" }); showToast("共有しました"); return; }
+        catch {}
+      }
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast("CSVを作成しました");
+  });
+
+  $("btnDeleteAll").addEventListener("click", () => {
+    const ok = confirm("全データを削除します。戻せません。OK？");
+    if (!ok) return;
+    localStorage.removeItem(LS_KEY);
+    showToast("全削除しました");
+    renderList();
+  });
+
+  // Enter key: move next
+  const order = [daiEl, gamesEl, suruEl, memoEl];
+  const focusNext = (el) => {
+    const i = order.indexOf(el);
+    if (i >= 0 && i < order.length - 1) order[i+1].focus();
+  };
+  [daiEl, gamesEl, suruEl].forEach(el => {
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); focusNext(el); }
+    });
+  });
+
+  // init
+  dateEl.value = addDaysISO(todayISO(), -1);
+})();
+</script>
+</body>
+</html>

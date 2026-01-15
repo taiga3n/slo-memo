@@ -12,18 +12,15 @@
 }
 *{box-sizing:border-box}
 body{
-  margin:0; background:var(--bg); color:var(--ink);
+  margin:0;background:var(--bg);color:var(--ink);
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP",sans-serif;
-  padding: env(safe-area-inset-top) 12px env(safe-area-inset-bottom) 12px;
+  padding:env(safe-area-inset-top) 12px env(safe-area-inset-bottom) 12px
 }
 header{display:flex;justify-content:space-between;align-items:center;padding:10px 4px}
 h1{margin:0;font-size:20px}
 .tab{padding:10px 14px;border-radius:16px;border:1px solid var(--line);background:transparent;color:var(--ink)}
 .tab.active{background:var(--btn);border-color:transparent}
-.card{
-  background:var(--card);border:1px solid var(--line);
-  border-radius:18px;padding:14px;margin-bottom:12px
-}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px}
 label{font-size:12px;color:var(--muted);margin:14px 0 8px;display:block}
 input,textarea{
   width:100%;padding:14px;border-radius:16px;
@@ -32,14 +29,22 @@ input,textarea{
 textarea{min-height:80px}
 .stack{display:flex;flex-direction:column;gap:14px}
 .row{display:flex;gap:10px;flex-wrap:wrap}
-button{
-  padding:12px 14px;border-radius:16px;
-  border:1px solid var(--line);background:var(--btn);color:var(--ink)
-}
-button:disabled{opacity:.55}
+button{padding:12px 14px;border-radius:16px;border:1px solid var(--line);background:var(--btn);color:var(--ink)}
+button:disabled{opacity:.5}
 .primary{background:var(--acc);border-color:transparent;color:#001427;font-weight:800}
 .danger{background:transparent;border-color:var(--bad);color:var(--bad)}
 .actions{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+.items{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.item{
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:12px;
+  background:#0f0f16;
+  white-space:pre-wrap;
+  cursor:pointer
+}
+.item.editing{outline:2px solid var(--acc)}
+.small{font-size:12px;color:var(--muted)}
 .toast{
   position:fixed;left:50%;transform:translateX(-50%);
   bottom:calc(env(safe-area-inset-bottom)+16px);
@@ -48,17 +53,6 @@ button:disabled{opacity:.55}
   opacity:0;transition:.2s
 }
 .toast.show{opacity:1}
-.items{display:flex;flex-direction:column;gap:10px;margin-top:12px}
-.item{border:1px solid var(--line);border-radius:16px;padding:12px;background:#0f0f16;white-space:pre-wrap}
-.small{font-size:12px;color:var(--muted)}
-
-/* 保存成功フラッシュ */
-.flash-ok{animation:okFlash 220ms ease-out}
-@keyframes okFlash{
-  0%{box-shadow:0 0 0 0 rgba(77,163,255,0)}
-  20%{box-shadow:0 0 0 3px rgba(77,163,255,.35)}
-  100%{box-shadow:0 0 0 0 rgba(77,163,255,0)}
-}
 </style>
 </head>
 
@@ -75,37 +69,20 @@ button:disabled{opacity:.55}
   <div class="stack">
     <div>
       <label>日付</label>
-      <div class="row">
-        <button id="today" type="button">今日</button>
-        <button id="yesterday" type="button">昨日</button>
-      </div>
-      <input id="date" type="date" />
+      <input id="date" type="date">
     </div>
-
     <div>
       <label>台番</label>
-      <div class="row">
-        <button id="daiMinus" type="button">-1</button>
-        <button id="daiPlus" type="button">+1</button>
-      </div>
-      <input id="dai" inputmode="numeric" pattern="[0-9]*" />
+      <input id="dai" inputmode="numeric" pattern="[0-9]*">
     </div>
-
     <div>
       <label>当該ゲーム数（G）</label>
-      <input id="games" inputmode="numeric" pattern="[0-9]*" />
+      <input id="games" inputmode="numeric" pattern="[0-9]*">
     </div>
-
     <div>
       <label>スルー回数</label>
-      <div class="row">
-        <button id="suruMinus" type="button">-1</button>
-        <button id="suruPlus" type="button">+1</button>
-        <button id="suruZero" type="button">0</button>
-      </div>
-      <input id="suru" inputmode="numeric" pattern="[0-9]*" />
+      <input id="suru" inputmode="numeric" pattern="[0-9]*">
     </div>
-
     <div>
       <label>メモ</label>
       <textarea id="memo"></textarea>
@@ -113,15 +90,15 @@ button:disabled{opacity:.55}
   </div>
 
   <div class="actions">
-    <button id="save" class="primary" type="button">保存（最速）</button>
-    <button id="saveNext" type="button">保存して次（台番+1）</button>
-    <button id="reset" class="danger" type="button">入力リセット</button>
+    <button id="save" class="primary">保存</button>
+    <button id="saveNext">保存して次</button>
+    <button id="reset" class="danger">入力リセット</button>
   </div>
 </section>
 
 <section id="list" class="card" style="display:none">
-  <button id="copy" type="button">表示中をコピー</button>
-  <div class="small">※ そのままLINEやメモに貼れます</div>
+  <button id="copy">表示中をコピー</button>
+  <button id="clearAll" class="danger" style="margin-top:8px">履歴を全て削除</button>
   <div id="items" class="items"></div>
 </section>
 
@@ -129,85 +106,93 @@ button:disabled{opacity:.55}
 
 <script>
 (() => {
-  "use strict";
   const LS="slo_memo_v3";
   const $=id=>document.getElementById(id);
+  const load=()=>JSON.parse(localStorage.getItem(LS)||"[]");
+  const saveAll=d=>localStorage.setItem(LS,JSON.stringify(d));
+  const toNum=v=>{const n=Number(v);return Number.isFinite(n)?n:null};
 
-  const addSec=$("add"), listSec=$("list");
-  const tabAdd=$("tabAdd"), tabList=$("tabList");
-  const toast=$("toast");
-
-  const dateEl=$("date"), daiEl=$("dai"), gamesEl=$("games"),
-        suruEl=$("suru"), memoEl=$("memo"), itemsEl=$("items");
-
-  const saveBtn=$("save"), saveNextBtn=$("saveNext");
-
-  const buzz=(ms=20)=>{try{navigator.vibrate&&navigator.vibrate(ms)}catch{}};
-  const show=t=>{toast.textContent=t;toast.classList.add("show");setTimeout(()=>toast.classList.remove("show"),1200)};
-  const flashOK=()=>{addSec.classList.remove("flash-ok");void addSec.offsetWidth;addSec.classList.add("flash-ok");setTimeout(()=>addSec.classList.remove("flash-ok"),260)};
-
-  const isoLocal=d=>{const x=new Date(d);x.setMinutes(x.getMinutes()-x.getTimezoneOffset());return x.toISOString().slice(0,10)};
-  const today=()=>isoLocal(new Date());
-  const yesterday=()=>{const d=new Date();d.setDate(d.getDate()-1);return isoLocal(d)};
-
-  const load=()=>{try{return JSON.parse(localStorage.getItem(LS)||"[]")}catch{return[]}};
-  const saveAll=a=>{try{localStorage.setItem(LS,JSON.stringify(a));return true}catch{return false}};
-  const toNum=v=>{const s=String(v??"").replace(/[, ]/g,"");if(!s)return null;const n=Number(s);return Number.isFinite(n)?n:null};
+  let editIndex=null;
 
   const render=()=>{
-    itemsEl.innerHTML="";
-    const d=load();
-    if(!d.length){itemsEl.innerHTML='<div class="small">データがありません。</div>';return;}
-    d.forEach(r=>{
-      const el=document.createElement("div");
-      el.className="item";
-      el.textContent=`${r.date} 台${r.dai} ${r.games}G スルー${r.suru}${r.memo?" "+r.memo:""}`;
-      itemsEl.appendChild(el);
+    const items=$("items");
+    items.innerHTML="";
+    load().forEach((r,i)=>{
+      const d=document.createElement("div");
+      d.className="item"+(i===editIndex?" editing":"");
+      d.textContent=`${r.dai}番 ${r.games}G スルー${r.suru}${r.memo?" "+r.memo:""}`;
+      d.onclick=()=>startEdit(i);
+      items.appendChild(d);
     });
   };
 
-  tabAdd.onclick=()=>{addSec.style.display="";listSec.style.display="none";tabAdd.classList.add("active");tabList.classList.remove("active")};
-  tabList.onclick=()=>{render();addSec.style.display="none";listSec.style.display="";tabList.classList.add("active");tabAdd.classList.remove("active")};
-
-  $("today").onclick=()=>dateEl.value=today();
-  $("yesterday").onclick=()=>dateEl.value=yesterday();
-
-  $("daiMinus").onclick=()=>{const n=toNum(daiEl.value);if(n===null)return;daiEl.value=n-1;buzz()};
-  $("daiPlus").onclick=()=>{const n=toNum(daiEl.value);if(n===null)return;daiEl.value=n+1;buzz()};
-
-  $("suruMinus").onclick=()=>{const n=toNum(suruEl.value)||0;suruEl.value=Math.max(0,n-1);buzz()};
-  $("suruPlus").onclick=()=>{const n=toNum(suruEl.value)||0;suruEl.value=n+1;buzz()};
-  $("suruZero").onclick=()=>{suruEl.value=0;buzz()};
-
-  let lock=false;
-  const lockBtns=()=>{lock=true;saveBtn.disabled=saveNextBtn.disabled=true;setTimeout(()=>{lock=false;saveBtn.disabled=saveNextBtn.disabled=false},650)};
-
-  function save(next){
-    if(lock)return;lockBtns();
-    const dai=toNum(daiEl.value), games=toNum(gamesEl.value), suru=toNum(suruEl.value)||0;
-    if(dai===null||games===null){show("未入力あり");return;}
-    const r={date:dateEl.value||yesterday(),dai, games, suru, memo:memoEl.value.trim()};
-    const d=load();d.unshift(r);if(!saveAll(d))return;
-    flashOK();buzz();show("保存した");
-    gamesEl.value="";suruEl.value="";memoEl.value="";
-    if(next)daiEl.value=dai+1;daiEl.focus();
-  }
-  saveBtn.onclick=()=>save(false);
-  saveNextBtn.onclick=()=>save(true);
-
-  $("reset").onclick=()=>{gamesEl.value="";suruEl.value="";memoEl.value="";show("リセット")};
-
-  /* ★ コピー出力（変更点ここ） */
-  $("copy").onclick=async()=>{
-    const text=load().map(r=>
-      `${r.dai}番 ${r.games}G スルー${r.suru}${r.memo?" "+r.memo:""}`
-    ).join("\n");
-    try{await navigator.clipboard.writeText(text);show("コピーした");buzz()}
-    catch{alert(text)}
+  const startEdit=i=>{
+    const r=load()[i];
+    editIndex=i;
+    $("date").value=r.date;
+    $("dai").value=r.dai;
+    $("games").value=r.games;
+    $("suru").value=r.suru;
+    $("memo").value=r.memo;
+    $("save").textContent="上書き保存";
+    $("saveNext").disabled=true;
+    render();
+    $("tabAdd").click();
   };
 
-  dateEl.value=yesterday();
-  setTimeout(()=>daiEl.focus(),200);
+  $("save").onclick=()=>{
+    const dai=toNum($("dai").value);
+    const games=toNum($("games").value);
+    if(dai===null||games===null)return;
+    const d=load();
+    const r={
+      date:$("date").value,
+      dai, games,
+      suru:toNum($("suru").value)||0,
+      memo:$("memo").value.trim()
+    };
+    if(editIndex!==null){
+      d[editIndex]=r;
+      editIndex=null;
+      $("save").textContent="保存";
+      $("saveNext").disabled=false;
+    }else{
+      d.unshift(r);
+    }
+    saveAll(d);
+    $("reset").click();
+  };
+
+  $("reset").onclick=()=>{
+    editIndex=null;
+    $("save").textContent="保存";
+    $("saveNext").disabled=false;
+    ["dai","games","suru","memo"].forEach(id=>$(id).value="");
+  };
+
+  $("copy").onclick=()=>{
+    const t=load().map(r=>`${r.dai}番 ${r.games}G スルー${r.suru}${r.memo?" "+r.memo:""}`).join("\n");
+    navigator.clipboard.writeText(t);
+  };
+
+  $("clearAll").onclick=()=>{
+    if(confirm("履歴を全て削除します。よろしいですか？")){
+      localStorage.removeItem(LS);
+      render();
+    }
+  };
+
+  $("tabAdd").onclick=()=>{
+    $("add").style.display="";
+    $("list").style.display="none";
+  };
+  $("tabList").onclick=()=>{
+    render();
+    $("add").style.display="none";
+    $("list").style.display="";
+  };
+
+  $("date").value=new Date().toISOString().slice(0,10);
 })();
 </script>
 </body>

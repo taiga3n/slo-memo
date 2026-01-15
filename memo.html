@@ -53,6 +53,14 @@ button:disabled{opacity:.5}
   opacity:0;transition:.2s
 }
 .toast.show{opacity:1}
+
+/* 保存成功フラッシュ */
+.flash-ok{animation:okFlash 220ms ease-out}
+@keyframes okFlash{
+  0%{box-shadow:0 0 0 0 rgba(77,163,255,0)}
+  20%{box-shadow:0 0 0 3px rgba(77,163,255,.35)}
+  100%{box-shadow:0 0 0 0 rgba(77,163,255,0)}
+}
 </style>
 </head>
 
@@ -69,20 +77,37 @@ button:disabled{opacity:.5}
   <div class="stack">
     <div>
       <label>日付</label>
-      <input id="date" type="date">
+      <div class="row">
+        <button id="today" type="button">今日</button>
+        <button id="yesterday" type="button">昨日</button>
+      </div>
+      <input id="date" type="date" />
     </div>
+
     <div>
       <label>台番</label>
-      <input id="dai" inputmode="numeric" pattern="[0-9]*">
+      <div class="row">
+        <button id="daiMinus" type="button">-1</button>
+        <button id="daiPlus" type="button">+1</button>
+      </div>
+      <input id="dai" inputmode="numeric" pattern="[0-9]*" />
     </div>
+
     <div>
       <label>当該ゲーム数（G）</label>
-      <input id="games" inputmode="numeric" pattern="[0-9]*">
+      <input id="games" inputmode="numeric" pattern="[0-9]*" />
     </div>
+
     <div>
       <label>スルー回数</label>
-      <input id="suru" inputmode="numeric" pattern="[0-9]*">
+      <div class="row">
+        <button id="suruMinus" type="button">-1</button>
+        <button id="suruPlus" type="button">+1</button>
+        <button id="suruZero" type="button">0</button>
+      </div>
+      <input id="suru" inputmode="numeric" pattern="[0-9]*" />
     </div>
+
     <div>
       <label>メモ</label>
       <textarea id="memo"></textarea>
@@ -90,15 +115,16 @@ button:disabled{opacity:.5}
   </div>
 
   <div class="actions">
-    <button id="save" class="primary">保存</button>
-    <button id="saveNext">保存して次</button>
-    <button id="reset" class="danger">入力リセット</button>
+    <button id="save" class="primary" type="button">保存</button>
+    <button id="saveNext" type="button">保存して次（台番+1）</button>
+    <button id="reset" class="danger" type="button">入力リセット</button>
   </div>
 </section>
 
 <section id="list" class="card" style="display:none">
-  <button id="copy">表示中をコピー</button>
-  <button id="clearAll" class="danger" style="margin-top:8px">履歴を全て削除</button>
+  <button id="copy" type="button">表示中をコピー</button>
+  <button id="clearAll" class="danger" type="button" style="margin-top:8px">履歴を全て削除</button>
+  <div class="small" style="margin-top:8px">※ 履歴をタップすると編集（上書き）できます</div>
   <div id="items" class="items"></div>
 </section>
 
@@ -106,93 +132,215 @@ button:disabled{opacity:.5}
 
 <script>
 (() => {
+  "use strict";
+
   const LS="slo_memo_v3";
   const $=id=>document.getElementById(id);
-  const load=()=>JSON.parse(localStorage.getItem(LS)||"[]");
-  const saveAll=d=>localStorage.setItem(LS,JSON.stringify(d));
-  const toNum=v=>{const n=Number(v);return Number.isFinite(n)?n:null};
 
-  let editIndex=null;
+  const addSec=$("add"), listSec=$("list");
+  const tabAdd=$("tabAdd"), tabList=$("tabList");
+  const toast=$("toast");
 
-  const render=()=>{
-    const items=$("items");
-    items.innerHTML="";
-    load().forEach((r,i)=>{
-      const d=document.createElement("div");
-      d.className="item"+(i===editIndex?" editing":"");
-      d.textContent=`${r.dai}番 ${r.games}G スルー${r.suru}${r.memo?" "+r.memo:""}`;
-      d.onclick=()=>startEdit(i);
-      items.appendChild(d);
-    });
-  };
+  const dateEl=$("date"), daiEl=$("dai"), gamesEl=$("games"),
+        suruEl=$("suru"), memoEl=$("memo"), itemsEl=$("items");
 
-  const startEdit=i=>{
-    const r=load()[i];
-    editIndex=i;
-    $("date").value=r.date;
-    $("dai").value=r.dai;
-    $("games").value=r.games;
-    $("suru").value=r.suru;
-    $("memo").value=r.memo;
-    $("save").textContent="上書き保存";
-    $("saveNext").disabled=true;
+  const saveBtn=$("save"), saveNextBtn=$("saveNext");
+
+  let editIndex=null;          // どの履歴を編集中か
+  let lock=false;              // 連打ガード
+
+  const buzz=(ms=20)=>{try{navigator.vibrate&&navigator.vibrate(ms)}catch{}};
+  const show=t=>{toast.textContent=t;toast.classList.add("show");setTimeout(()=>toast.classList.remove("show"),1200)};
+  const flashOK=()=>{addSec.classList.remove("flash-ok");void addSec.offsetWidth;addSec.classList.add("flash-ok");setTimeout(()=>addSec.classList.remove("flash-ok"),260)};
+  const lockBtns=()=>{lock=true;saveBtn.disabled=saveNextBtn.disabled=true;setTimeout(()=>{lock=false;saveBtn.disabled=false;saveNextBtn.disabled=(editIndex!==null)},650)};
+
+  // ローカル日付
+  const isoLocal=d=>{const x=new Date(d);x.setMinutes(x.getMinutes()-x.getTimezoneOffset());return x.toISOString().slice(0,10)};
+  const today=()=>isoLocal(new Date());
+  const yesterday=()=>{const d=new Date();d.setDate(d.getDate()-1);return isoLocal(d)};
+
+  const load=()=>{try{return JSON.parse(localStorage.getItem(LS)||"[]")}catch{return[]}};
+  const saveAll=a=>{try{localStorage.setItem(LS,JSON.stringify(a));return true}catch{return false}};
+  const toNum=v=>{const s=String(v??"").replace(/[, ]/g,"");if(!s)return null;const n=Number(s);return Number.isFinite(n)?n:null};
+
+  const lineNoDate = (r) => `${r.dai}番 ${r.games}G スルー${r.suru}${r.memo?" "+r.memo:""}`;
+
+  function openAdd(){
+    addSec.style.display="";
+    listSec.style.display="none";
+    tabAdd.classList.add("active");
+    tabList.classList.remove("active");
+  }
+  function openList(){
     render();
-    $("tabAdd").click();
-  };
+    addSec.style.display="none";
+    listSec.style.display="";
+    tabList.classList.add("active");
+    tabAdd.classList.remove("active");
+  }
 
-  $("save").onclick=()=>{
-    const dai=toNum($("dai").value);
-    const games=toNum($("games").value);
-    if(dai===null||games===null)return;
+  function setEditMode(on){
+    if(on){
+      saveBtn.textContent="上書き保存";
+      saveNextBtn.disabled=true; // 編集中は事故防止で無効
+    }else{
+      saveBtn.textContent="保存";
+      saveNextBtn.disabled=false;
+    }
+  }
+
+  function clearInputs(keepDai=false){
+    gamesEl.value="";
+    suruEl.value="";
+    memoEl.value="";
+    if(!keepDai) daiEl.value="";
+  }
+
+  function render(){
+    itemsEl.innerHTML="";
     const d=load();
+
+    if(!d.length){
+      const e=document.createElement("div");
+      e.className="small";
+      e.style.marginTop="10px";
+      e.textContent="データがありません。";
+      itemsEl.appendChild(e);
+      return;
+    }
+
+    d.forEach((r,i)=>{
+      const el=document.createElement("div");
+      el.className="item"+(i===editIndex?" editing":"");
+      // 履歴表示もシンプル（コピーと同じ）
+      el.textContent=lineNoDate(r);
+      el.onclick=()=>startEdit(i);
+      itemsEl.appendChild(el);
+    });
+  }
+
+  function startEdit(i){
+    const d=load();
+    const r=d[i];
+    if(!r) return;
+
+    editIndex=i;
+    dateEl.value = r.date || dateEl.value || yesterday();
+    daiEl.value = r.dai ?? "";
+    gamesEl.value = r.games ?? "";
+    suruEl.value = r.suru ?? 0;
+    memoEl.value = r.memo ?? "";
+
+    setEditMode(true);
+    render();
+    openAdd();
+    show("編集モード");
+    buzz(10);
+  }
+
+  function saveCommon(next){
+    if(lock) return;
+    lockBtns();
+
+    const dai=toNum(daiEl.value);
+    const games=toNum(gamesEl.value);
+    const suru=toNum(suruEl.value) ?? 0;
+
+    if(dai===null || games===null){
+      show("未入力あり");
+      buzz(25);
+      return;
+    }
+
     const r={
-      date:$("date").value,
-      dai, games,
-      suru:toNum($("suru").value)||0,
-      memo:$("memo").value.trim()
+      date: dateEl.value || yesterday(),
+      dai, games, suru,
+      memo: memoEl.value.trim()
     };
+
+    const d=load();
+
     if(editIndex!==null){
+      // 上書き
       d[editIndex]=r;
       editIndex=null;
-      $("save").textContent="保存";
-      $("saveNext").disabled=false;
-    }else{
-      d.unshift(r);
+      setEditMode(false);
+      // 上書き後は台番も残して、Gだけクリア（実戦向き）
+      clearInputs(true);
+      flashOK(); buzz(20); show("上書き保存");
+      if(!saveAll(d)) show("保存できない");
+      daiEl.focus();
+      return;
     }
-    saveAll(d);
-    $("reset").click();
-  };
+
+    // 新規追加
+    d.unshift(r);
+    if(!saveAll(d)){
+      show("保存できない");
+      return;
+    }
+
+    flashOK(); buzz(20); show("保存した");
+
+    // 保存して次：台番+1で残す
+    if(next){
+      daiEl.value = String(dai + 1);
+      clearInputs(true);
+    }else{
+      clearInputs(true); // 台番は残す方が速い（好みで変えられる）
+    }
+    daiEl.focus();
+  }
+
+  // ボタン
+  saveBtn.onclick=()=>saveCommon(false);
+  saveNextBtn.onclick=()=>saveCommon(true);
 
   $("reset").onclick=()=>{
+    // 編集キャンセル
     editIndex=null;
-    $("save").textContent="保存";
-    $("saveNext").disabled=false;
-    ["dai","games","suru","memo"].forEach(id=>$(id).value="");
+    setEditMode(false);
+    clearInputs(false);
+    show("リセット");
+    buzz(15);
+    daiEl.focus();
   };
 
-  $("copy").onclick=()=>{
-    const t=load().map(r=>`${r.dai}番 ${r.games}G スルー${r.suru}${r.memo?" "+r.memo:""}`).join("\n");
-    navigator.clipboard.writeText(t);
+  $("copy").onclick=async()=>{
+    const text=load().map(lineNoDate).join("\n");
+    try{await navigator.clipboard.writeText(text);show("コピーした");buzz(20)}
+    catch{alert(text)}
   };
 
   $("clearAll").onclick=()=>{
     if(confirm("履歴を全て削除します。よろしいですか？")){
       localStorage.removeItem(LS);
+      editIndex=null;
+      setEditMode(false);
       render();
+      show("全削除した");
+      buzz(20);
     }
   };
 
-  $("tabAdd").onclick=()=>{
-    $("add").style.display="";
-    $("list").style.display="none";
-  };
-  $("tabList").onclick=()=>{
-    render();
-    $("add").style.display="none";
-    $("list").style.display="";
-  };
+  // 日付ボタン
+  $("today").onclick=()=>dateEl.value=today();
+  $("yesterday").onclick=()=>dateEl.value=yesterday();
 
-  $("date").value=new Date().toISOString().slice(0,10);
+  // +/- ボタン
+  $("daiMinus").onclick=()=>{const n=toNum(daiEl.value);if(n===null)return;daiEl.value=String(n-1);buzz(10)};
+  $("daiPlus").onclick=()=>{const n=toNum(daiEl.value);if(n===null)return;daiEl.value=String(n+1);buzz(10)};
+  $("suruMinus").onclick=()=>{const n=toNum(suruEl.value)??0;suruEl.value=String(Math.max(0,n-1));buzz(10)};
+  $("suruPlus").onclick=()=>{const n=toNum(suruEl.value)??0;suruEl.value=String(n+1);buzz(10)};
+  $("suruZero").onclick=()=>{suruEl.value="0";buzz(10)};
+
+  // タブ
+  tabAdd.onclick=openAdd;
+  tabList.onclick=openList;
+
+  // 初期
+  dateEl.value = yesterday();
+  setTimeout(()=>daiEl.focus(),200);
 })();
 </script>
 </body>

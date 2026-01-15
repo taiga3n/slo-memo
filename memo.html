@@ -79,12 +79,12 @@ button{
         <button id="daiMinus" type="button">-1</button>
         <button id="daiPlus" type="button">+1</button>
       </div>
-      <input id="dai" inputmode="numeric" pattern="[0-9]*" placeholder="1141" />
+      <input id="dai" inputmode="numeric" pattern="[0-9]*" />
     </div>
 
     <div>
       <label>当該ゲーム数（G）</label>
-      <input id="games" inputmode="numeric" pattern="[0-9]*" placeholder="15178" />
+      <input id="games" inputmode="numeric" pattern="[0-9]*" />
     </div>
 
     <div>
@@ -94,12 +94,12 @@ button{
         <button id="suruPlus" type="button">+1</button>
         <button id="suruZero" type="button">0</button>
       </div>
-      <input id="suru" inputmode="numeric" pattern="[0-9]*" placeholder="3" />
+      <input id="suru" inputmode="numeric" pattern="[0-9]*" />
     </div>
 
     <div>
       <label>メモ</label>
-      <textarea id="memo" placeholder="有利切れっぽい…"></textarea>
+      <textarea id="memo"></textarea>
     </div>
   </div>
 
@@ -122,7 +122,7 @@ button{
 (() => {
   "use strict";
 
-  const LS = "slo_memo_v3"; // ここは変えない（既存データ維持）
+  const LS = "slo_memo_v3";
   const $ = (id) => document.getElementById(id);
 
   const addSec = $("add");
@@ -138,14 +138,13 @@ button{
   const memoEl = $("memo");
   const itemsEl = $("items");
 
-  const buzz = (ms=20) => { try { if (navigator.vibrate) navigator.vibrate(ms); } catch {} };
+  const buzz = (ms=20) => navigator.vibrate && navigator.vibrate(ms);
   const show = (t) => {
     toast.textContent = t;
     toast.classList.add("show");
     setTimeout(() => toast.classList.remove("show"), 1200);
   };
 
-  // ローカル日付（iPhoneで日付ズレしない）
   const isoLocal = (d=new Date()) => {
     const x = new Date(d);
     x.setMinutes(x.getMinutes() - x.getTimezoneOffset());
@@ -161,60 +160,45 @@ button{
   const load = () => {
     try {
       const raw = localStorage.getItem(LS);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
+      return raw ? JSON.parse(raw) : [];
     } catch {
       return [];
     }
   };
-
   const saveAll = (arr) => {
-    // iPhoneでlocalStorageが詰まってても落ちないように
     try {
       localStorage.setItem(LS, JSON.stringify(arr));
       return true;
-    } catch (e) {
-      show("保存できない（容量/設定）");
+    } catch {
+      show("保存できない");
       return false;
     }
   };
 
-  const toNumOrNull = (v) => {
-    const s = String(v ?? "").trim().replace(/[, ]/g, "");
-    if (!s) return null;
-    const n = Number(s);
+  const toNum = (v) => {
+    const n = Number(String(v).replace(/[, ]/g,""));
     return Number.isFinite(n) ? n : null;
   };
 
   const render = () => {
-    const data = load();
     itemsEl.innerHTML = "";
-    if (!data.length) {
-      const e = document.createElement("div");
-      e.className = "small";
-      e.style.marginTop = "10px";
-      e.textContent = "データがありません。";
-      itemsEl.appendChild(e);
-      return;
-    }
-    for (const r of data) {
-      const line = `${r.date} 台${r.dai} ${r.games}G スルー${r.suru}${r.memo ? " " + r.memo : ""}`;
+    load().forEach(r => {
       const el = document.createElement("div");
       el.className = "item";
-      el.textContent = line;
+      el.textContent =
+        `${r.date} 台${r.dai} ${r.games}G スルー${r.suru}` +
+        (r.memo ? " " + r.memo : "");
       itemsEl.appendChild(el);
-    }
+    });
   };
 
-  const openAdd = () => {
+  tabAdd.onclick = () => {
     addSec.style.display = "";
     listSec.style.display = "none";
     tabAdd.classList.add("active");
     tabList.classList.remove("active");
   };
-
-  const openList = () => {
+  tabList.onclick = () => {
     render();
     addSec.style.display = "none";
     listSec.style.display = "";
@@ -222,125 +206,81 @@ button{
     tabAdd.classList.remove("active");
   };
 
-  tabAdd.addEventListener("click", openAdd);
-  tabList.addEventListener("click", openList);
+  $("today").onclick = () => dateEl.value = today();
+  $("yesterday").onclick = () => dateEl.value = yesterday();
 
-  $("today").addEventListener("click", () => { dateEl.value = today(); });
-  $("yesterday").addEventListener("click", () => { dateEl.value = yesterday(); });
-
-  $("daiMinus").addEventListener("click", () => {
-    const n = toNumOrNull(daiEl.value);
-    if (n == null) return;
-    daiEl.value = String(n - 1);
-    buzz(10);
-  });
-  $("daiPlus").addEventListener("click", () => {
-    const n = toNumOrNull(daiEl.value);
-    if (n == null) return;
-    daiEl.value = String(n + 1);
-    buzz(10);
-  });
-
-  $("suruMinus").addEventListener("click", () => {
-    const n = toNumOrNull(suruEl.value) ?? 0;
-    suruEl.value = String(Math.max(0, n - 1));
-    buzz(10);
-  });
-  $("suruPlus").addEventListener("click", () => {
-    const n = toNumOrNull(suruEl.value) ?? 0;
-    suruEl.value = String(n + 1);
-    buzz(10);
-  });
-  $("suruZero").addEventListener("click", () => {
-    suruEl.value = "0";
-    buzz(10);
-  });
-
-  const save = (next) => {
-    const dai = toNumOrNull(daiEl.value);
-    const games = toNumOrNull(gamesEl.value);
-    const suru = toNumOrNull(suruEl.value) ?? 0;
-
-    if (dai == null || games == null) {
-      show("未入力あり");
-      buzz(25);
-      return;
-    }
-
-    const r = {
-      date: dateEl.value || yesterday(),
-      dai: String(dai),
-      games: String(games),
-      suru: String(suru),
-      memo: memoEl.value.trim()
-    };
-
-    const data = load();
-    data.unshift(r);
-
-    if (!saveAll(data)) return;
-
-    show("保存した");
-    buzz(20);
-
-    gamesEl.value = "";
-    suruEl.value = "";
-    memoEl.value = "";
-
-    if (next) daiEl.value = String(dai + 1);
-
-    daiEl.focus();
+  $("daiMinus").onclick = () => {
+    const n = toNum(daiEl.value);
+    if(n===null) return;
+    daiEl.value = n-1;
+    buzz();
+  };
+  $("daiPlus").onclick = () => {
+    const n = toNum(daiEl.value);
+    if(n===null) return;
+    daiEl.value = n+1;
+    buzz();
   };
 
-  $("save").addEventListener("click", () => save(false));
-  $("saveNext").addEventListener("click", () => save(true));
+  $("suruMinus").onclick = () => {
+    const n = toNum(suruEl.value) || 0;
+    suruEl.value = Math.max(0,n-1);
+    buzz();
+  };
+  $("suruPlus").onclick = () => {
+    const n = toNum(suruEl.value) || 0;
+    suruEl.value = n+1;
+    buzz();
+  };
+  $("suruZero").onclick = () => {
+    suruEl.value = 0;
+    buzz();
+  };
 
-  $("reset").addEventListener("click", () => {
-    gamesEl.value = "";
-    suruEl.value = "";
-    memoEl.value = "";
-    show("リセット");
-    buzz(15);
-  });
+  $("save").onclick = () => save(false);
+  $("saveNext").onclick = () => save(true);
 
-  $("copy").addEventListener("click", async () => {
-    const lines = load().map(r =>
-      `${r.date} 台${r.dai} ${r.games}G スルー${r.suru}${r.memo ? " " + r.memo : ""}`
-    ).join("\n");
-
-    // まずはClipboard API
-    try {
-      await navigator.clipboard.writeText(lines);
-      show("コピーした");
-      buzz(20);
+  function save(next){
+    const dai = toNum(daiEl.value);
+    const games = toNum(gamesEl.value);
+    const suru = toNum(suruEl.value) || 0;
+    if(dai===null || games===null){
+      show("未入力あり");
       return;
-    } catch {}
-
-    // フォールバック（iOSで効くことが多い）
-    try {
-      const ta = document.createElement("textarea");
-      ta.value = lines;
-      ta.style.position = "fixed";
-      ta.style.left = "-9999px";
-      document.body.appendChild(ta);
-      ta.focus();
-      ta.select();
-      const ok = document.execCommand("copy");
-      document.body.removeChild(ta);
-      if (ok) {
-        show("コピーした");
-        buzz(20);
-      } else {
-        alert(lines);
-      }
-    } catch {
-      alert(lines);
     }
-  });
+    const r = {
+      date: dateEl.value || yesterday(),
+      dai, games, suru,
+      memo: memoEl.value.trim()
+    };
+    const d = load();
+    d.unshift(r);
+    if(!saveAll(d)) return;
+    show("保存した");
+    gamesEl.value=""; suruEl.value=""; memoEl.value="";
+    if(next) daiEl.value = dai+1;
+    daiEl.focus();
+  }
 
-  // 初期：昨日、台番フォーカス
+  $("reset").onclick = () => {
+    gamesEl.value=""; suruEl.value=""; memoEl.value="";
+    show("リセット");
+  };
+
+  $("copy").onclick = async () => {
+    const text = load().map(r =>
+      `${r.date} 台${r.dai} ${r.games}G スルー${r.suru}${r.memo?" "+r.memo:""}`
+    ).join("\n");
+    try{
+      await navigator.clipboard.writeText(text);
+      show("コピーした");
+    }catch{
+      alert(text);
+    }
+  };
+
   dateEl.value = yesterday();
-  setTimeout(() => daiEl.focus(), 200);
+  setTimeout(()=>daiEl.focus(),200);
 })();
 </script>
 </body>

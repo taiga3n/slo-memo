@@ -10,57 +10,139 @@
   --bg:#0b0b0f; --card:#151520; --ink:#f2f2f7; --muted:#a7a7b3;
   --line:#2a2a36; --acc:#4da3ff; --bad:#ff5c5c; --btn:#1e1e2a;
 }
+
+/* ===== 全体をほんの少し縮小 ===== */
+html{font-size:15px}
+
 *{box-sizing:border-box}
 body{
-  margin:0;background:var(--bg);color:var(--ink);
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Noto Sans JP",sans-serif;
-  padding:env(safe-area-inset-top) 12px env(safe-area-inset-bottom) 12px
+  padding:
+    env(safe-area-inset-top)
+    10px
+    calc(env(safe-area-inset-bottom) + 8px)
+    10px;
 }
-header{display:flex;justify-content:space-between;align-items:center;padding:10px 4px}
-h1{margin:0;font-size:20px}
-.tab{padding:10px 14px;border-radius:16px;border:1px solid var(--line);background:transparent;color:var(--ink)}
+
+header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:8px 2px;
+}
+
+h1{margin:0;font-size:19px}
+
+.tab{
+  padding:8px 12px;
+  border-radius:14px;
+  border:1px solid var(--line);
+  background:transparent;
+  color:var(--ink);
+}
 .tab.active{background:var(--btn);border-color:transparent}
-.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px}
-label{font-size:12px;color:var(--muted);margin:14px 0 8px;display:block}
-input,textarea{
-  width:100%;padding:14px;border-radius:16px;
-  border:1px solid var(--line);background:#0f0f16;color:var(--ink);font-size:17px
-}
-textarea{min-height:80px}
-.stack{display:flex;flex-direction:column;gap:14px}
-.row{display:flex;gap:10px;flex-wrap:wrap}
-button{padding:12px 14px;border-radius:16px;border:1px solid var(--line);background:var(--btn);color:var(--ink)}
-button:disabled{opacity:.5}
-.primary{background:var(--acc);border-color:transparent;color:#001427;font-weight:800}
-.danger{background:transparent;border-color:var(--bad);color:var(--bad)}
-.actions{display:flex;flex-direction:column;gap:12px;margin-top:12px}
-.items{display:flex;flex-direction:column;gap:10px;margin-top:12px}
-.item{
+
+.card{
+  background:var(--card);
   border:1px solid var(--line);
   border-radius:16px;
   padding:12px;
+  margin-bottom:10px;
+}
+
+label{
+  font-size:11px;
+  color:var(--muted);
+  margin:10px 0 6px;
+  display:block;
+}
+
+/* ===== 入力欄共通 ===== */
+input,textarea{
+  width:100%;
+  padding:12px;
+  border-radius:14px;
+  border:1px solid var(--line);
+  background:#0f0f16;
+  color:var(--ink);
+  font-size:16px;
+}
+
+/* ===== iOS date input対策（はみ出し防止） ===== */
+input[type="date"]{
+  height:44px;
+  line-height:20px;
+  appearance:none;
+  -webkit-appearance:none;
+}
+
+/* placeholderを完全に消す（薄文字不要） */
+::placeholder{color:transparent}
+
+textarea{min-height:70px}
+
+.stack{display:flex;flex-direction:column;gap:10px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+
+button{
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid var(--line);
+  background:var(--btn);
+  color:var(--ink);
+  font-size:14px;
+}
+
+button:disabled{opacity:.5}
+
+.primary{
+  background:var(--acc);
+  border-color:transparent;
+  color:#001427;
+  font-weight:800;
+}
+
+.danger{
+  background:transparent;
+  border-color:var(--bad);
+  color:var(--bad);
+}
+
+.actions{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-top:10px;
+}
+
+/* ===== 履歴 ===== */
+.items{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.item{
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:10px;
   background:#0f0f16;
   white-space:pre-wrap;
-  cursor:pointer
 }
 .item.editing{outline:2px solid var(--acc)}
-.small{font-size:12px;color:var(--muted)}
+
 .toast{
-  position:fixed;left:50%;transform:translateX(-50%);
-  bottom:calc(env(safe-area-inset-bottom)+16px);
-  background:#0f0f16;border:1px solid var(--line);
-  padding:10px 14px;border-radius:999px;font-size:13px;
-  opacity:0;transition:.2s
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:calc(env(safe-area-inset-bottom) + 12px);
+  background:#0f0f16;
+  border:1px solid var(--line);
+  padding:8px 12px;
+  border-radius:999px;
+  font-size:12px;
+  opacity:0;
+  transition:.2s;
 }
 .toast.show{opacity:1}
-
-/* 保存成功フラッシュ */
-.flash-ok{animation:okFlash 220ms ease-out}
-@keyframes okFlash{
-  0%{box-shadow:0 0 0 0 rgba(77,163,255,0)}
-  20%{box-shadow:0 0 0 3px rgba(77,163,255,.35)}
-  100%{box-shadow:0 0 0 0 rgba(77,163,255,0)}
-}
 </style>
 </head>
 
@@ -77,35 +159,22 @@ button:disabled{opacity:.5}
   <div class="stack">
     <div>
       <label>日付</label>
-      <div class="row">
-        <button id="today" type="button">今日</button>
-        <button id="yesterday" type="button">昨日</button>
-      </div>
-      <input id="date" type="date" />
+      <input id="date" type="date">
     </div>
 
     <div>
       <label>台番</label>
-      <div class="row">
-        <button id="daiMinus" type="button">-1</button>
-        <button id="daiPlus" type="button">+1</button>
-      </div>
-      <input id="dai" inputmode="numeric" pattern="[0-9]*" />
+      <input id="dai" inputmode="numeric">
     </div>
 
     <div>
       <label>当該ゲーム数（G）</label>
-      <input id="games" inputmode="numeric" pattern="[0-9]*" />
+      <input id="games" inputmode="numeric">
     </div>
 
     <div>
       <label>スルー回数</label>
-      <div class="row">
-        <button id="suruMinus" type="button">-1</button>
-        <button id="suruPlus" type="button">+1</button>
-        <button id="suruZero" type="button">0</button>
-      </div>
-      <input id="suru" inputmode="numeric" pattern="[0-9]*" />
+      <input id="suru" inputmode="numeric">
     </div>
 
     <div>
@@ -115,16 +184,15 @@ button:disabled{opacity:.5}
   </div>
 
   <div class="actions">
-    <button id="save" class="primary" type="button">保存</button>
-    <button id="saveNext" type="button">保存して次（台番+1）</button>
-    <button id="reset" class="danger" type="button">入力リセット</button>
+    <button id="save" class="primary">保存</button>
+    <button id="saveNext">保存して次</button>
+    <button id="reset" class="danger">入力リセット</button>
   </div>
 </section>
 
 <section id="list" class="card" style="display:none">
-  <button id="copy" type="button">表示中をコピー</button>
-  <button id="clearAll" class="danger" type="button" style="margin-top:8px">履歴を全て削除</button>
-  <div class="small" style="margin-top:8px">※ 履歴をタップすると編集（上書き）できます</div>
+  <button id="copy">表示中をコピー</button>
+  <button id="clearAll" class="danger" style="margin-top:6px">履歴を全て削除</button>
   <div id="items" class="items"></div>
 </section>
 
@@ -132,215 +200,87 @@ button:disabled{opacity:.5}
 
 <script>
 (() => {
-  "use strict";
-
   const LS="slo_memo_v3";
   const $=id=>document.getElementById(id);
+  const load=()=>JSON.parse(localStorage.getItem(LS)||"[]");
+  const saveAll=d=>localStorage.setItem(LS,JSON.stringify(d));
+  let editIndex=null;
 
-  const addSec=$("add"), listSec=$("list");
-  const tabAdd=$("tabAdd"), tabList=$("tabList");
-  const toast=$("toast");
-
-  const dateEl=$("date"), daiEl=$("dai"), gamesEl=$("games"),
-        suruEl=$("suru"), memoEl=$("memo"), itemsEl=$("items");
-
-  const saveBtn=$("save"), saveNextBtn=$("saveNext");
-
-  let editIndex=null;          // どの履歴を編集中か
-  let lock=false;              // 連打ガード
-
-  const buzz=(ms=20)=>{try{navigator.vibrate&&navigator.vibrate(ms)}catch{}};
-  const show=t=>{toast.textContent=t;toast.classList.add("show");setTimeout(()=>toast.classList.remove("show"),1200)};
-  const flashOK=()=>{addSec.classList.remove("flash-ok");void addSec.offsetWidth;addSec.classList.add("flash-ok");setTimeout(()=>addSec.classList.remove("flash-ok"),260)};
-  const lockBtns=()=>{lock=true;saveBtn.disabled=saveNextBtn.disabled=true;setTimeout(()=>{lock=false;saveBtn.disabled=false;saveNextBtn.disabled=(editIndex!==null)},650)};
-
-  // ローカル日付
-  const isoLocal=d=>{const x=new Date(d);x.setMinutes(x.getMinutes()-x.getTimezoneOffset());return x.toISOString().slice(0,10)};
-  const today=()=>isoLocal(new Date());
-  const yesterday=()=>{const d=new Date();d.setDate(d.getDate()-1);return isoLocal(d)};
-
-  const load=()=>{try{return JSON.parse(localStorage.getItem(LS)||"[]")}catch{return[]}};
-  const saveAll=a=>{try{localStorage.setItem(LS,JSON.stringify(a));return true}catch{return false}};
-  const toNum=v=>{const s=String(v??"").replace(/[, ]/g,"");if(!s)return null;const n=Number(s);return Number.isFinite(n)?n:null};
-
-  const lineNoDate = (r) => `${r.dai}番 ${r.games}G スルー${r.suru}${r.memo?" "+r.memo:""}`;
-
-  function openAdd(){
-    addSec.style.display="";
-    listSec.style.display="none";
-    tabAdd.classList.add("active");
-    tabList.classList.remove("active");
-  }
-  function openList(){
-    render();
-    addSec.style.display="none";
-    listSec.style.display="";
-    tabList.classList.add("active");
-    tabAdd.classList.remove("active");
-  }
-
-  function setEditMode(on){
-    if(on){
-      saveBtn.textContent="上書き保存";
-      saveNextBtn.disabled=true; // 編集中は事故防止で無効
-    }else{
-      saveBtn.textContent="保存";
-      saveNextBtn.disabled=false;
-    }
-  }
-
-  function clearInputs(keepDai=false){
-    gamesEl.value="";
-    suruEl.value="";
-    memoEl.value="";
-    if(!keepDai) daiEl.value="";
-  }
-
-  function render(){
-    itemsEl.innerHTML="";
-    const d=load();
-
-    if(!d.length){
-      const e=document.createElement("div");
-      e.className="small";
-      e.style.marginTop="10px";
-      e.textContent="データがありません。";
-      itemsEl.appendChild(e);
-      return;
-    }
-
-    d.forEach((r,i)=>{
-      const el=document.createElement("div");
-      el.className="item"+(i===editIndex?" editing":"");
-      // 履歴表示もシンプル（コピーと同じ）
-      el.textContent=lineNoDate(r);
-      el.onclick=()=>startEdit(i);
-      itemsEl.appendChild(el);
+  const render=()=>{
+    $("items").innerHTML="";
+    load().forEach((r,i)=>{
+      const d=document.createElement("div");
+      d.className="item"+(i===editIndex?" editing":"");
+      d.textContent=`${r.dai}番 ${r.games}G スルー${r.suru}${r.memo?" "+r.memo:""}`;
+      d.onclick=()=>startEdit(i);
+      $("items").appendChild(d);
     });
-  }
+  };
 
-  function startEdit(i){
-    const d=load();
-    const r=d[i];
-    if(!r) return;
-
+  const startEdit=i=>{
+    const r=load()[i];
     editIndex=i;
-    dateEl.value = r.date || dateEl.value || yesterday();
-    daiEl.value = r.dai ?? "";
-    gamesEl.value = r.games ?? "";
-    suruEl.value = r.suru ?? 0;
-    memoEl.value = r.memo ?? "";
+    date.value=r.date;
+    dai.value=r.dai;
+    games.value=r.games;
+    suru.value=r.suru;
+    memo.value=r.memo;
+    save.textContent="上書き保存";
+    saveNext.disabled=true;
+    tabAdd.click();
+  };
 
-    setEditMode(true);
-    render();
-    openAdd();
-    show("編集モード");
-    buzz(10);
-  }
-
-  function saveCommon(next){
-    if(lock) return;
-    lockBtns();
-
-    const dai=toNum(daiEl.value);
-    const games=toNum(gamesEl.value);
-    const suru=toNum(suruEl.value) ?? 0;
-
-    if(dai===null || games===null){
-      show("未入力あり");
-      buzz(25);
-      return;
-    }
-
-    const r={
-      date: dateEl.value || yesterday(),
-      dai, games, suru,
-      memo: memoEl.value.trim()
-    };
-
+  save.onclick=()=>{
+    if(!dai.value||!games.value)return;
     const d=load();
-
+    const r={
+      date:date.value,
+      dai:dai.value,
+      games:games.value,
+      suru:suru.value||0,
+      memo:memo.value.trim()
+    };
     if(editIndex!==null){
-      // 上書き
       d[editIndex]=r;
       editIndex=null;
-      setEditMode(false);
-      // 上書き後は台番も残して、Gだけクリア（実戦向き）
-      clearInputs(true);
-      flashOK(); buzz(20); show("上書き保存");
-      if(!saveAll(d)) show("保存できない");
-      daiEl.focus();
-      return;
-    }
-
-    // 新規追加
-    d.unshift(r);
-    if(!saveAll(d)){
-      show("保存できない");
-      return;
-    }
-
-    flashOK(); buzz(20); show("保存した");
-
-    // 保存して次：台番+1で残す
-    if(next){
-      daiEl.value = String(dai + 1);
-      clearInputs(true);
+      save.textContent="保存";
+      saveNext.disabled=false;
     }else{
-      clearInputs(true); // 台番は残す方が速い（好みで変えられる）
+      d.unshift(r);
     }
-    daiEl.focus();
-  }
+    saveAll(d);
+    reset.click();
+  };
 
-  // ボタン
-  saveBtn.onclick=()=>saveCommon(false);
-  saveNextBtn.onclick=()=>saveCommon(true);
+  saveNext.onclick=()=>{
+    save.click();
+    dai.value=Number(dai.value||0)+1;
+    dai.focus();
+  };
 
-  $("reset").onclick=()=>{
-    // 編集キャンセル
+  reset.onclick=()=>{
     editIndex=null;
-    setEditMode(false);
-    clearInputs(false);
-    show("リセット");
-    buzz(15);
-    daiEl.focus();
+    save.textContent="保存";
+    saveNext.disabled=false;
+    games.value="";suru.value="";memo.value="";
   };
 
-  $("copy").onclick=async()=>{
-    const text=load().map(lineNoDate).join("\n");
-    try{await navigator.clipboard.writeText(text);show("コピーした");buzz(20)}
-    catch{alert(text)}
+  copy.onclick=()=>{
+    const t=load().map(r=>`${r.dai}番 ${r.games}G スルー${r.suru}${r.memo?" "+r.memo:""}`).join("\n");
+    navigator.clipboard.writeText(t);
   };
 
-  $("clearAll").onclick=()=>{
+  clearAll.onclick=()=>{
     if(confirm("履歴を全て削除します。よろしいですか？")){
       localStorage.removeItem(LS);
-      editIndex=null;
-      setEditMode(false);
       render();
-      show("全削除した");
-      buzz(20);
     }
   };
 
-  // 日付ボタン
-  $("today").onclick=()=>dateEl.value=today();
-  $("yesterday").onclick=()=>dateEl.value=yesterday();
+  tabAdd.onclick=()=>{add.style.display="";list.style.display="none"};
+  tabList.onclick=()=>{render();add.style.display="none";list.style.display=""};
 
-  // +/- ボタン
-  $("daiMinus").onclick=()=>{const n=toNum(daiEl.value);if(n===null)return;daiEl.value=String(n-1);buzz(10)};
-  $("daiPlus").onclick=()=>{const n=toNum(daiEl.value);if(n===null)return;daiEl.value=String(n+1);buzz(10)};
-  $("suruMinus").onclick=()=>{const n=toNum(suruEl.value)??0;suruEl.value=String(Math.max(0,n-1));buzz(10)};
-  $("suruPlus").onclick=()=>{const n=toNum(suruEl.value)??0;suruEl.value=String(n+1);buzz(10)};
-  $("suruZero").onclick=()=>{suruEl.value="0";buzz(10)};
-
-  // タブ
-  tabAdd.onclick=openAdd;
-  tabList.onclick=openList;
-
-  // 初期
-  dateEl.value = yesterday();
-  setTimeout(()=>daiEl.focus(),200);
+  date.value=new Date().toISOString().slice(0,10);
 })();
 </script>
 </body>

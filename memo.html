@@ -36,6 +36,9 @@ button{
   padding:12px 14px;border-radius:16px;
   border:1px solid var(--line);background:var(--btn);color:var(--ink)
 }
+button:disabled{
+  opacity:.55;
+}
 .primary{background:var(--acc);border-color:transparent;color:#001427;font-weight:800}
 .danger{background:transparent;border-color:var(--bad);color:var(--bad)}
 .actions{display:flex;flex-direction:column;gap:12px;margin-top:12px}
@@ -50,6 +53,16 @@ button{
 .items{display:flex;flex-direction:column;gap:10px;margin-top:12px}
 .item{border:1px solid var(--line);border-radius:16px;padding:12px;background:#0f0f16;white-space:pre-wrap}
 .small{font-size:12px;color:var(--muted)}
+
+/* ④ 保存成功フラッシュ */
+.flash-ok{
+  animation: okFlash 220ms ease-out;
+}
+@keyframes okFlash{
+  0%   { box-shadow: 0 0 0 0 rgba(77,163,255,.0); transform: translateY(0); }
+  20%  { box-shadow: 0 0 0 3px rgba(77,163,255,.35); }
+  100% { box-shadow: 0 0 0 0 rgba(77,163,255,.0); transform: translateY(0); }
+}
 </style>
 </head>
 
@@ -138,13 +151,26 @@ button{
   const memoEl = $("memo");
   const itemsEl = $("items");
 
-  const buzz = (ms=20) => navigator.vibrate && navigator.vibrate(ms);
+  const saveBtn = $("save");
+  const saveNextBtn = $("saveNext");
+
+  const buzz = (ms=20) => { try { if (navigator.vibrate) navigator.vibrate(ms); } catch {} };
   const show = (t) => {
     toast.textContent = t;
     toast.classList.add("show");
     setTimeout(() => toast.classList.remove("show"), 1200);
   };
 
+  // ④ 保存成功フラッシュ
+  const flashOK = () => {
+    addSec.classList.remove("flash-ok");
+    // reflow
+    void addSec.offsetWidth;
+    addSec.classList.add("flash-ok");
+    setTimeout(()=>addSec.classList.remove("flash-ok"), 260);
+  };
+
+  // ローカル日付
   const isoLocal = (d=new Date()) => {
     const x = new Date(d);
     x.setMinutes(x.getMinutes() - x.getTimezoneOffset());
@@ -165,6 +191,7 @@ button{
       return [];
     }
   };
+
   const saveAll = (arr) => {
     try {
       localStorage.setItem(LS, JSON.stringify(arr));
@@ -176,13 +203,24 @@ button{
   };
 
   const toNum = (v) => {
-    const n = Number(String(v).replace(/[, ]/g,""));
+    const s = String(v ?? "").replace(/[, ]/g,"");
+    if (!s) return null;
+    const n = Number(s);
     return Number.isFinite(n) ? n : null;
   };
 
   const render = () => {
     itemsEl.innerHTML = "";
-    load().forEach(r => {
+    const data = load();
+    if (!data.length) {
+      const e = document.createElement("div");
+      e.className = "small";
+      e.style.marginTop = "10px";
+      e.textContent = "データがありません。";
+      itemsEl.appendChild(e);
+      return;
+    }
+    data.forEach(r => {
       const el = document.createElement("div");
       el.className = "item";
       el.textContent =
@@ -212,68 +250,100 @@ button{
   $("daiMinus").onclick = () => {
     const n = toNum(daiEl.value);
     if(n===null) return;
-    daiEl.value = n-1;
-    buzz();
+    daiEl.value = n - 1;
+    buzz(10);
   };
   $("daiPlus").onclick = () => {
     const n = toNum(daiEl.value);
     if(n===null) return;
-    daiEl.value = n+1;
-    buzz();
+    daiEl.value = n + 1;
+    buzz(10);
   };
 
   $("suruMinus").onclick = () => {
-    const n = toNum(suruEl.value) || 0;
-    suruEl.value = Math.max(0,n-1);
-    buzz();
+    const n = toNum(suruEl.value) ?? 0;
+    suruEl.value = Math.max(0, n - 1);
+    buzz(10);
   };
   $("suruPlus").onclick = () => {
-    const n = toNum(suruEl.value) || 0;
-    suruEl.value = n+1;
-    buzz();
+    const n = toNum(suruEl.value) ?? 0;
+    suruEl.value = n + 1;
+    buzz(10);
   };
   $("suruZero").onclick = () => {
     suruEl.value = 0;
-    buzz();
+    buzz(10);
   };
 
-  $("save").onclick = () => save(false);
-  $("saveNext").onclick = () => save(true);
+  // ⑥ 連打ガード（2重保存防止）
+  let savingLock = false;
+  const lockButtons = (ms=650) => {
+    savingLock = true;
+    saveBtn.disabled = true;
+    saveNextBtn.disabled = true;
+    setTimeout(() => {
+      savingLock = false;
+      saveBtn.disabled = false;
+      saveNextBtn.disabled = false;
+    }, ms);
+  };
+
+  saveBtn.onclick = () => save(false);
+  saveNextBtn.onclick = () => save(true);
 
   function save(next){
+    if (savingLock) return; // ⑥
+    lockButtons(650);       // ⑥
+
     const dai = toNum(daiEl.value);
     const games = toNum(gamesEl.value);
-    const suru = toNum(suruEl.value) || 0;
+    const suru = toNum(suruEl.value) ?? 0;
+
     if(dai===null || games===null){
       show("未入力あり");
+      buzz(25);
       return;
     }
+
     const r = {
       date: dateEl.value || yesterday(),
       dai, games, suru,
       memo: memoEl.value.trim()
     };
+
     const d = load();
     d.unshift(r);
     if(!saveAll(d)) return;
+
+    // ④ 保存成功のフィードバック
+    flashOK();
+    buzz(20);
     show("保存した");
-    gamesEl.value=""; suruEl.value=""; memoEl.value="";
-    if(next) daiEl.value = dai+1;
+
+    gamesEl.value = "";
+    suruEl.value = "";
+    memoEl.value = "";
+
+    if(next) daiEl.value = dai + 1;
     daiEl.focus();
   }
 
   $("reset").onclick = () => {
-    gamesEl.value=""; suruEl.value=""; memoEl.value="";
+    gamesEl.value = "";
+    suruEl.value = "";
+    memoEl.value = "";
     show("リセット");
+    buzz(15);
   };
 
   $("copy").onclick = async () => {
     const text = load().map(r =>
-      `${r.date} 台${r.dai} ${r.games}G スルー${r.suru}${r.memo?" "+r.memo:""}`
+      `${r.date} 台${r.dai} ${r.games}G スルー${r.suru}${r.memo ? " " + r.memo : ""}`
     ).join("\n");
     try{
       await navigator.clipboard.writeText(text);
       show("コピーした");
+      buzz(20);
     }catch{
       alert(text);
     }

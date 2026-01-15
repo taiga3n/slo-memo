@@ -36,9 +36,7 @@ button{
   padding:12px 14px;border-radius:16px;
   border:1px solid var(--line);background:var(--btn);color:var(--ink)
 }
-button:disabled{
-  opacity:.55;
-}
+button:disabled{opacity:.55}
 .primary{background:var(--acc);border-color:transparent;color:#001427;font-weight:800}
 .danger{background:transparent;border-color:var(--bad);color:var(--bad)}
 .actions{display:flex;flex-direction:column;gap:12px;margin-top:12px}
@@ -54,14 +52,12 @@ button:disabled{
 .item{border:1px solid var(--line);border-radius:16px;padding:12px;background:#0f0f16;white-space:pre-wrap}
 .small{font-size:12px;color:var(--muted)}
 
-/* ④ 保存成功フラッシュ */
-.flash-ok{
-  animation: okFlash 220ms ease-out;
-}
+/* 保存成功フラッシュ */
+.flash-ok{animation:okFlash 220ms ease-out}
 @keyframes okFlash{
-  0%   { box-shadow: 0 0 0 0 rgba(77,163,255,.0); transform: translateY(0); }
-  20%  { box-shadow: 0 0 0 3px rgba(77,163,255,.35); }
-  100% { box-shadow: 0 0 0 0 rgba(77,163,255,.0); transform: translateY(0); }
+  0%{box-shadow:0 0 0 0 rgba(77,163,255,0)}
+  20%{box-shadow:0 0 0 3px rgba(77,163,255,.35)}
+  100%{box-shadow:0 0 0 0 rgba(77,163,255,0)}
 }
 </style>
 </head>
@@ -134,222 +130,83 @@ button:disabled{
 <script>
 (() => {
   "use strict";
+  const LS="slo_memo_v3";
+  const $=id=>document.getElementById(id);
 
-  const LS = "slo_memo_v3";
-  const $ = (id) => document.getElementById(id);
+  const addSec=$("add"), listSec=$("list");
+  const tabAdd=$("tabAdd"), tabList=$("tabList");
+  const toast=$("toast");
 
-  const addSec = $("add");
-  const listSec = $("list");
-  const tabAdd = $("tabAdd");
-  const tabList = $("tabList");
-  const toast = $("toast");
+  const dateEl=$("date"), daiEl=$("dai"), gamesEl=$("games"),
+        suruEl=$("suru"), memoEl=$("memo"), itemsEl=$("items");
 
-  const dateEl = $("date");
-  const daiEl = $("dai");
-  const gamesEl = $("games");
-  const suruEl = $("suru");
-  const memoEl = $("memo");
-  const itemsEl = $("items");
+  const saveBtn=$("save"), saveNextBtn=$("saveNext");
 
-  const saveBtn = $("save");
-  const saveNextBtn = $("saveNext");
+  const buzz=(ms=20)=>{try{navigator.vibrate&&navigator.vibrate(ms)}catch{}};
+  const show=t=>{toast.textContent=t;toast.classList.add("show");setTimeout(()=>toast.classList.remove("show"),1200)};
+  const flashOK=()=>{addSec.classList.remove("flash-ok");void addSec.offsetWidth;addSec.classList.add("flash-ok");setTimeout(()=>addSec.classList.remove("flash-ok"),260)};
 
-  const buzz = (ms=20) => { try { if (navigator.vibrate) navigator.vibrate(ms); } catch {} };
-  const show = (t) => {
-    toast.textContent = t;
-    toast.classList.add("show");
-    setTimeout(() => toast.classList.remove("show"), 1200);
-  };
+  const isoLocal=d=>{const x=new Date(d);x.setMinutes(x.getMinutes()-x.getTimezoneOffset());return x.toISOString().slice(0,10)};
+  const today=()=>isoLocal(new Date());
+  const yesterday=()=>{const d=new Date();d.setDate(d.getDate()-1);return isoLocal(d)};
 
-  // ④ 保存成功フラッシュ
-  const flashOK = () => {
-    addSec.classList.remove("flash-ok");
-    // reflow
-    void addSec.offsetWidth;
-    addSec.classList.add("flash-ok");
-    setTimeout(()=>addSec.classList.remove("flash-ok"), 260);
-  };
+  const load=()=>{try{return JSON.parse(localStorage.getItem(LS)||"[]")}catch{return[]}};
+  const saveAll=a=>{try{localStorage.setItem(LS,JSON.stringify(a));return true}catch{return false}};
+  const toNum=v=>{const s=String(v??"").replace(/[, ]/g,"");if(!s)return null;const n=Number(s);return Number.isFinite(n)?n:null};
 
-  // ローカル日付
-  const isoLocal = (d=new Date()) => {
-    const x = new Date(d);
-    x.setMinutes(x.getMinutes() - x.getTimezoneOffset());
-    return x.toISOString().slice(0,10);
-  };
-  const today = () => isoLocal(new Date());
-  const yesterday = () => {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    return isoLocal(d);
-  };
-
-  const load = () => {
-    try {
-      const raw = localStorage.getItem(LS);
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  };
-
-  const saveAll = (arr) => {
-    try {
-      localStorage.setItem(LS, JSON.stringify(arr));
-      return true;
-    } catch {
-      show("保存できない");
-      return false;
-    }
-  };
-
-  const toNum = (v) => {
-    const s = String(v ?? "").replace(/[, ]/g,"");
-    if (!s) return null;
-    const n = Number(s);
-    return Number.isFinite(n) ? n : null;
-  };
-
-  const render = () => {
-    itemsEl.innerHTML = "";
-    const data = load();
-    if (!data.length) {
-      const e = document.createElement("div");
-      e.className = "small";
-      e.style.marginTop = "10px";
-      e.textContent = "データがありません。";
-      itemsEl.appendChild(e);
-      return;
-    }
-    data.forEach(r => {
-      const el = document.createElement("div");
-      el.className = "item";
-      el.textContent =
-        `${r.date} 台${r.dai} ${r.games}G スルー${r.suru}` +
-        (r.memo ? " " + r.memo : "");
+  const render=()=>{
+    itemsEl.innerHTML="";
+    const d=load();
+    if(!d.length){itemsEl.innerHTML='<div class="small">データがありません。</div>';return;}
+    d.forEach(r=>{
+      const el=document.createElement("div");
+      el.className="item";
+      el.textContent=`${r.date} 台${r.dai} ${r.games}G スルー${r.suru}${r.memo?" "+r.memo:""}`;
       itemsEl.appendChild(el);
     });
   };
 
-  tabAdd.onclick = () => {
-    addSec.style.display = "";
-    listSec.style.display = "none";
-    tabAdd.classList.add("active");
-    tabList.classList.remove("active");
-  };
-  tabList.onclick = () => {
-    render();
-    addSec.style.display = "none";
-    listSec.style.display = "";
-    tabList.classList.add("active");
-    tabAdd.classList.remove("active");
-  };
+  tabAdd.onclick=()=>{addSec.style.display="";listSec.style.display="none";tabAdd.classList.add("active");tabList.classList.remove("active")};
+  tabList.onclick=()=>{render();addSec.style.display="none";listSec.style.display="";tabList.classList.add("active");tabAdd.classList.remove("active")};
 
-  $("today").onclick = () => dateEl.value = today();
-  $("yesterday").onclick = () => dateEl.value = yesterday();
+  $("today").onclick=()=>dateEl.value=today();
+  $("yesterday").onclick=()=>dateEl.value=yesterday();
 
-  $("daiMinus").onclick = () => {
-    const n = toNum(daiEl.value);
-    if(n===null) return;
-    daiEl.value = n - 1;
-    buzz(10);
-  };
-  $("daiPlus").onclick = () => {
-    const n = toNum(daiEl.value);
-    if(n===null) return;
-    daiEl.value = n + 1;
-    buzz(10);
-  };
+  $("daiMinus").onclick=()=>{const n=toNum(daiEl.value);if(n===null)return;daiEl.value=n-1;buzz()};
+  $("daiPlus").onclick=()=>{const n=toNum(daiEl.value);if(n===null)return;daiEl.value=n+1;buzz()};
 
-  $("suruMinus").onclick = () => {
-    const n = toNum(suruEl.value) ?? 0;
-    suruEl.value = Math.max(0, n - 1);
-    buzz(10);
-  };
-  $("suruPlus").onclick = () => {
-    const n = toNum(suruEl.value) ?? 0;
-    suruEl.value = n + 1;
-    buzz(10);
-  };
-  $("suruZero").onclick = () => {
-    suruEl.value = 0;
-    buzz(10);
-  };
+  $("suruMinus").onclick=()=>{const n=toNum(suruEl.value)||0;suruEl.value=Math.max(0,n-1);buzz()};
+  $("suruPlus").onclick=()=>{const n=toNum(suruEl.value)||0;suruEl.value=n+1;buzz()};
+  $("suruZero").onclick=()=>{suruEl.value=0;buzz()};
 
-  // ⑥ 連打ガード（2重保存防止）
-  let savingLock = false;
-  const lockButtons = (ms=650) => {
-    savingLock = true;
-    saveBtn.disabled = true;
-    saveNextBtn.disabled = true;
-    setTimeout(() => {
-      savingLock = false;
-      saveBtn.disabled = false;
-      saveNextBtn.disabled = false;
-    }, ms);
-  };
-
-  saveBtn.onclick = () => save(false);
-  saveNextBtn.onclick = () => save(true);
+  let lock=false;
+  const lockBtns=()=>{lock=true;saveBtn.disabled=saveNextBtn.disabled=true;setTimeout(()=>{lock=false;saveBtn.disabled=saveNextBtn.disabled=false},650)};
 
   function save(next){
-    if (savingLock) return; // ⑥
-    lockButtons(650);       // ⑥
-
-    const dai = toNum(daiEl.value);
-    const games = toNum(gamesEl.value);
-    const suru = toNum(suruEl.value) ?? 0;
-
-    if(dai===null || games===null){
-      show("未入力あり");
-      buzz(25);
-      return;
-    }
-
-    const r = {
-      date: dateEl.value || yesterday(),
-      dai, games, suru,
-      memo: memoEl.value.trim()
-    };
-
-    const d = load();
-    d.unshift(r);
-    if(!saveAll(d)) return;
-
-    // ④ 保存成功のフィードバック
-    flashOK();
-    buzz(20);
-    show("保存した");
-
-    gamesEl.value = "";
-    suruEl.value = "";
-    memoEl.value = "";
-
-    if(next) daiEl.value = dai + 1;
-    daiEl.focus();
+    if(lock)return;lockBtns();
+    const dai=toNum(daiEl.value), games=toNum(gamesEl.value), suru=toNum(suruEl.value)||0;
+    if(dai===null||games===null){show("未入力あり");return;}
+    const r={date:dateEl.value||yesterday(),dai, games, suru, memo:memoEl.value.trim()};
+    const d=load();d.unshift(r);if(!saveAll(d))return;
+    flashOK();buzz();show("保存した");
+    gamesEl.value="";suruEl.value="";memoEl.value="";
+    if(next)daiEl.value=dai+1;daiEl.focus();
   }
+  saveBtn.onclick=()=>save(false);
+  saveNextBtn.onclick=()=>save(true);
 
-  $("reset").onclick = () => {
-    gamesEl.value = "";
-    suruEl.value = "";
-    memoEl.value = "";
-    show("リセット");
-    buzz(15);
-  };
+  $("reset").onclick=()=>{gamesEl.value="";suruEl.value="";memoEl.value="";show("リセット")};
 
-  $("copy").onclick = async () => {
-    const text = load().map(r =>
-      `${r.date} 台${r.dai} ${r.games}G スルー${r.suru}${r.memo ? " " + r.memo : ""}`
+  /* ★ コピー出力（変更点ここ） */
+  $("copy").onclick=async()=>{
+    const text=load().map(r=>
+      `${r.dai}番 ${r.games}G スルー${r.suru}${r.memo?" "+r.memo:""}`
     ).join("\n");
-    try{
-      await navigator.clipboard.writeText(text);
-      show("コピーした");
-      buzz(20);
-    }catch{
-      alert(text);
-    }
+    try{await navigator.clipboard.writeText(text);show("コピーした");buzz()}
+    catch{alert(text)}
   };
 
-  dateEl.value = yesterday();
+  dateEl.value=yesterday();
   setTimeout(()=>daiEl.focus(),200);
 })();
 </script>
